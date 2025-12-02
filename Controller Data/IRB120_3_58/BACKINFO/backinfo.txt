@@ -25,9 +25,11 @@ SIO.cfg
 MOC.cfg
 
 
->>TASK1: (T_ROB1,,)
+>>TASK1: (T_ROB1,test,)
 SYSMOD\user.sys @ 
+PROGMOD\TcpServer_MultiPort.mod @ 
 PROGMOD\Module1.mod @ 
+PROGMOD\CalibData.mod @ 
 
 
 >>EOF:
