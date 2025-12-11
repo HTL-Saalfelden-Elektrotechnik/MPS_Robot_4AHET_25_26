@@ -1,0 +1,102 @@
+MODULE TcpServer_MultiPort
+    
+    VAR string robot_ip := "10.0.1.70";
+
+    ! Testing
+    VAR socketdev testing_server_socket;
+    VAR socketdev testing_client_socket;
+    VAR string testing_receive_string;
+    VAR string testing_client_ip;
+    VAR num testing_port := 520;
+    
+    ! Processing
+    VAR socketdev procesing_server_socket;
+    VAR socketdev processing_client_socket;
+    VAR string precessing_receive_string;
+    VAR string processing_client_ip;
+    VAR num processing_port := 530;
+    VAR string processing_ip := "10.0.1.30";
+
+    ! Handling
+    VAR socketdev handling_server_socket;
+    VAR socketdev handling_client_socket;
+    VAR string handling_receive_string;
+    VAR string handling_client_ip;
+    VAR num handling_port := 540;
+    
+    ! Sorting
+    VAR socketdev sorting_server_socket;
+    VAR socketdev sorting_client_socket;
+    VAR string sorting_receive_string;
+    VAR string sorting_client_ip;
+    VAR num sorting_port := 550;
+    PERS tooldata MyTool:=[TRUE,[[31.792631019,0,229.638935148],[0.945518576,0,0.325568154,0]],[1,[0,0,1],[1,0,0,0],0,0,0]];
+    PERS tooldata schunk_gripper:=[TRUE,[[0,0,0],[0.707106781,0,0.707106781,0]],[1,[0,0,1],[1,0,0,0],0,0,0]];
+    TASK PERS wobjdata Workobject_1:=[FALSE,TRUE,"",[[0,0,0],[1,0,0,0]],[[250,-525,29.728],[0.999999943,-0.000000206,-0.000337169,0]]];
+
+    PROC tcpServer()
+        ! Testing
+        TPWrite "Starting testing TCP server on port " + NumToStr(testing_port, 0);
+        SocketCreate testing_server_socket;
+        SocketBind testing_server_socket, robot_ip, testing_port;
+        SocketListen testing_server_socket;
+
+        ! Processing
+        TPWrite "Starting processing TCP server on port " + NumToStr(processing_port, 0);
+        SocketCreate procesing_server_socket;
+        SocketBind procesing_server_socket, "10.0.1.70", processing_port;
+        SocketListen procesing_server_socket;
+        
+        ! Handling
+        TPWrite "Starting handling TCP server on port " + NumToStr(handling_port, 0);
+        SocketCreate handling_server_socket;
+        SocketBind handling_server_socket, "10.0.1.70", handling_port;
+        SocketListen handling_server_socket;
+
+        WHILE TRUE DO
+            ! Testing TODO: Fucking multiport
+            !SocketAccept testing_server_socket, testing_client_socket
+            !\ClientAddress := testing_client_ip;
+            !SocketReceive testing_client_socket \Str := testing_receive_string;
+            !SocketSend testing_client_socket \Str := "Hello testing with ip-address " + testing_client_ip;
+            !TPWrite "Hello testing with ip-address " + testing_client_ip;
+            !SocketClose testing_client_socket;
+            
+            ! Processing
+            SocketAccept procesing_server_socket, processing_client_socket
+            \ClientAddress := processing_client_ip;
+            SocketReceive processing_client_socket \Str := precessing_receive_string;
+            SocketSend processing_client_socket \Str := "Hello client with ip-address " + processing_client_ip;
+            TPWrite "Hello client with ip-address " + processing_client_ip;
+            
+            IF processing_client_ip = processing_ip THEN
+                TPWrite "Processing connected";
+                demo;
+            ENDIF
+                
+            ! Wait for client acknowledge
+            
+            SocketClose processing_client_socket;
+        ENDWHILE
+        ERROR
+            RETRY;
+        UNDO
+        SocketClose procesing_server_socket;
+        SocketClose processing_client_socket;
+
+    ENDPROC
+    PROC Path_20()
+        MoveL PickUp,vmax,fine,schunk_gripper\WObj:=Workobject_1;
+        MoveL DropOff,vmax,fine,schunk_gripper\WObj:=Workobject_1;
+    ENDPROC
+    PROC debug_testing()
+
+    ENDPROC
+    PROC debug_processing()
+
+    ENDPROC
+    PROC debug_handling()
+
+    ENDPROC
+
+ENDMODULE

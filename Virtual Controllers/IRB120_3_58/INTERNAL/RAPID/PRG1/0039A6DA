@@ -1,0 +1,42 @@
+
+MODULE user
+	CONST robtarget demo1 :=[[390,300,430],[0.000015763,0,-1,0.000007694],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+	CONST robtarget demo12:=[[390,300,200],[0.000092225,0,-1,0.000032819],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+	CONST robtarget demo2 :=[[390,-300,430],[0.000052328,0,-1,0.000013224],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+	CONST robtarget demo22:=[[390,-300,200],[0.000048963,0,-1,0.000017964],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+	PROC testing_take_part()
+        TPWrite "Take part from testing";
+        
+        SocketClose 
+    ENDPROC
+    
+    PROC demo()
+        TPWrite "TODO: Demo brumm brumm";
+        ! move to starting point (optional)
+        MoveL demo12, vmax, fine, tool0;
+        
+        ! Close Gripper
+        Reset do_Auf;
+        Set do_Zu;
+        WaitDI di_Offen, 0;
+
+        ! Move to second point
+        MoveL demo1, vmax, fine, tool0;
+        MoveL demo2, vmax, fine, tool0;
+        MoveL demo22, vmax, fine, tool0;
+
+        ! Open gripper
+        Reset do_Zu;
+        Set do_Auf;
+        WaitDI di_Offen, 1;
+
+        ! move to starting point
+        MoveL demo2, vmax, fine, tool0;
+        MoveL demo1, vmax, fine, tool0;
+        MoveL demo12, vmax, fine, tool0;
+
+        TPWrite "Brumm brumm done";
+    ENDPROC
+
+ENDMODULE

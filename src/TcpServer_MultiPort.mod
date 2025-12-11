@@ -8,6 +8,7 @@ MODULE TcpServer_MultiPort
     VAR string testing_receive_string;
     VAR string testing_client_ip;
     VAR num testing_port := 520;
+    VAR string testing_ip := "10.0.1.20";
     
     ! Processing
     VAR socketdev procesing_server_socket;
@@ -23,6 +24,7 @@ MODULE TcpServer_MultiPort
     VAR string handling_receive_string;
     VAR string handling_client_ip;
     VAR num handling_port := 540;
+    VAR string handling_ip := "10.0.1.30";
     
     ! Sorting
     VAR socketdev sorting_server_socket;
@@ -30,57 +32,63 @@ MODULE TcpServer_MultiPort
     VAR string sorting_receive_string;
     VAR string sorting_client_ip;
     VAR num sorting_port := 550;
+    VAR string sorting_ip := "10.0.1.40";
+    
+    VAR socketdev general_in_server_socket;
+    VAR socketdev general_in_client_socket;
+    VAR string general_in_receive_string;
+    VAR string general_in_client_ip;
+    VAR num general_in_port := 530;
+    VAR socketstatus general_in_state;
+    VAR num general_in_time := 3600;
+    
+    
 
     PROC tcpServer()
-        ! Testing
-        TPWrite "Starting testing TCP server on port " + NumToStr(testing_port, 0);
-        SocketCreate testing_server_socket;
-        SocketBind testing_server_socket, robot_ip, testing_port;
-        SocketListen testing_server_socket;
-
-        ! Processing
-        TPWrite "Starting processing TCP server on port " + NumToStr(processing_port, 0);
-        SocketCreate procesing_server_socket;
-        SocketBind procesing_server_socket, "10.0.1.70", processing_port;
-        SocketListen procesing_server_socket;
+        TPWrite "Starting TCP Server " + NumToStr(general_in_port, 0);
+        SocketCreate general_in_server_socket;
+        SocketBind general_in_server_socket, robot_ip, general_in_port;
+        SocketListen general_in_server_socket;
         
-        ! Handling
-        TPWrite "Starting handling TCP server on port " + NumToStr(handling_port, 0);
-        SocketCreate handling_server_socket;
-        SocketBind handling_server_socket, "10.0.1.70", handling_port;
-        SocketListen handling_server_socket;
-
-        WHILE TRUE DO
-            ! Testing TODO: Fucking multiport
-            !SocketAccept testing_server_socket, testing_client_socket
-            !\ClientAddress := testing_client_ip;
-            !SocketReceive testing_client_socket \Str := testing_receive_string;
-            !SocketSend testing_client_socket \Str := "Hello testing with ip-address " + testing_client_ip;
-            !TPWrite "Hello testing with ip-address " + testing_client_ip;
-            !SocketClose testing_client_socket;
+        WHILE general_in_state < 5 DO
+            SocketAccept general_in_server_socket, general_in_client_socket
+            \ClientAddress := general_in_client_ip
+            \Time:= general_in_time;
+            SocketReceive general_in_client_socket \Str := general_in_receive_string;
+            SocketSend general_in_client_socket \Str := "Hello client with ip-address " + general_in_client_ip;
+            TPWrite "Hello client with ip-address " + general_in_client_ip;
             
-            ! Processing
-            SocketAccept procesing_server_socket, processing_client_socket
-            \ClientAddress := processing_client_ip;
-            SocketReceive processing_client_socket \Str := precessing_receive_string;
-            SocketSend processing_client_socket \Str := "Hello client with ip-address " + processing_client_ip;
-            TPWrite "Hello client with ip-address " + processing_client_ip;
-            
-            IF processing_client_ip = processing_ip THEN
-                TPWrite "Processing connected";
+            ! testing
+            IF general_in_client_ip = testing_ip THEN
+                ! Testing sent a signal
+                TPWrite "testing sent a signal";
+                check_take_testing;
+                SocketClose general_in_client_socket;
+                TPWrite "closing socket";
+            ELSEIF general_in_client_ip = processing_ip THEN
+                ! Processing sent a signal
+                TPWrite "Processing sent a signal";
                 demo;
+                TPWrite "closing socket";
+                SocketClose general_in_client_socket;
+            ELSEIF general_in_client_ip = handling_ip THEN
+                ! Handling sent a signal
+                TPWrite "handling sent a signal";
+                check_take_testing;
+                SocketClose general_in_client_socket;
+                TPWrite "closing handling socket";
+            ELSEIF general_in_client_ip = sorting_ip THEN
+                ! Sorting sent a signal
+                TPWrite "Sorting sent a signal";
+                check_take_testing;
+                SocketClose general_in_client_socket;
+                TPWrite "closing sorting socket";
+            ELSE
+                ! Who the fuck are you
+                TPWrite "Someone else sent a signal";
             ENDIF
-                
-            ! Wait for client acknowledge
             
-            SocketClose processing_client_socket;
+            general_in_state := SocketGetStatus(general_in_server_socket);
         ENDWHILE
-        ERROR
-            RETRY;
-        UNDO
-        SocketClose procesing_server_socket;
-        SocketClose processing_client_socket;
-
     ENDPROC
-
 ENDMODULE
