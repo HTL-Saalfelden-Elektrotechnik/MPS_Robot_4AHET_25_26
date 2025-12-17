@@ -7,7 +7,7 @@ MODULE TcpServer_MultiPort
     VAR socketdev testing_client_socket;
     VAR string testing_receive_string;
     VAR string testing_client_ip;
-    VAR num testing_port := 520;
+    VAR num testing_port := 531;
     VAR string testing_ip := "10.0.1.20";
     
     ! Processing
@@ -59,7 +59,6 @@ MODULE TcpServer_MultiPort
         \Time:= general_in_time;
         SocketReceive general_in_client_socket \Str := general_in_receive_string;
         SocketSend general_in_client_socket \Str := "Hello client with ip-address " + general_in_client_ip;
-        TPWrite "Hello client with ip-address " + general_in_client_ip;
             
         ! testing
         IF general_in_client_ip = testing_ip THEN
@@ -67,23 +66,18 @@ MODULE TcpServer_MultiPort
             TPWrite "testing sent a signal";
             check_take_testing;
             SocketClose general_in_client_socket;
-            TPWrite "closing socket";
         ELSEIF general_in_client_ip = processing_ip THEN
             ! Processing sent a signal
             TPWrite "Processing sent a signal";
             demo;
-            TPWrite "closing socket";
             SocketClose general_in_client_socket;
         ELSEIF general_in_client_ip = handling_ip THEN
             ! Handling sent a signal
             TPWrite "handling sent a signal";
-            check_take_testing;
         ELSEIF general_in_client_ip = sorting_ip THEN
             ! Sorting sent a signal
             TPWrite "Sorting sent a signal";
-            check_take_testing;
             SocketClose general_in_client_socket;
-            TPWrite "closing sorting socket";
         ELSE
             ! Who the fuck are you
             TPWrite "Someone else sent a signal";

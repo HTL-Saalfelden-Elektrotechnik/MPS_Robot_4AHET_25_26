@@ -23,4 +23,25 @@ MODULE TCPClient
         
         RETURN TRUE;
     ENDFUNC
+    
+    FUNC bool testing_reset_counter()
+        SocketClose general_out_client_socket;
+        SocketCreate general_out_client_socket;
+        SocketConnect general_out_client_socket, testing_ip, testing_port;
+        
+        ERROR
+        IF ERRNO = ERR_SOCK_TIMEOUT THEN
+            IF retry_no < 5 THEN
+                WaitTime 1;
+                retry_no := retry_no + 1;
+                RETRY;
+            ELSE
+                RAISE;
+            ENDIF
+        ENDIF
+        
+        SocketClose general_out_client_socket;
+        
+        RETURN TRUE;
+    ENDFUNC
 ENDMODULE

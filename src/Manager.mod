@@ -6,7 +6,7 @@ MODULE Manager
             on_origin := FALSE;
             
             closeServerSocket;
-            TPWrite "closing handling socket";
+            TPWrite "closing testing socket";
 
             takeTesting;
         ELSE
