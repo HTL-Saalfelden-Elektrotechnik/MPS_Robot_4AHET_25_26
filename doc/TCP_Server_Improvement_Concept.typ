@@ -18,7 +18,7 @@
   footer: [
     #set text(9pt)
     #h(1fr)
-    #counter(page).display("1 / 1", both: true)
+    // #counter(page).display("1 / 1", both: true)
   ],
 )
 
