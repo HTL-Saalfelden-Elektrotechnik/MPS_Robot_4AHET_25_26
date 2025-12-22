@@ -189,7 +189,11 @@ Create a reusable routine for safe socket initialization with error handling:
 ```rapid
 !*********************************************************
 ! Safe socket initialization with error handling
-! Returns TRUE on success, FALSE on failure
+! Parameters:
+!   server_socket - Socket device to create (modified)
+!   ip            - IP address to bind to
+!   port          - Port number to listen on
+!   server_running - Status flag (modified, TRUE on success)
 !*********************************************************
 PROC InitServerSocket(VAR socketdev server_socket, string ip, 
                       num port, VAR bool server_running)
@@ -585,7 +589,12 @@ ENDPROC
 ```rapid
 !*********************************************************
 ! Poll for incoming connection
-! Returns TRUE if connection received, FALSE otherwise
+! Parameters:
+!   server    - Server socket to poll (modified on accept)
+!   client    - Client socket to receive connection (modified)
+!   client_ip - Client IP address (modified on connection)
+!   timeout   - Timeout in seconds (0.1 = 100ms recommended)
+! Returns TRUE if connection received, FALSE on timeout
 !*********************************************************
 FUNC bool PollServer(VAR socketdev server, VAR socketdev client, 
                      VAR string client_ip, num timeout)
@@ -691,9 +700,12 @@ PERS string sorting_allowed_ip := "10.0.1.50";
 Validate all received commands before execution:
 
 ```rapid
+! Security constants
+CONST num MAX_COMMAND_LENGTH := 100;
+
 FUNC bool IsValidCommand(string cmd)
     ! Check command length
-    IF StrLen(cmd) > 100 THEN
+    IF StrLen(cmd) > MAX_COMMAND_LENGTH THEN
         TPWrite "SECURITY: Command too long";
         RETURN FALSE;
     ENDIF
@@ -734,6 +746,9 @@ ENDPROC
 Verify robot is in safe position before executing commands:
 
 ```rapid
+! Safety constants
+CONST num SAFE_HEIGHT_THRESHOLD := 100;  ! Minimum Z height in mm
+
 FUNC bool IsRobotInSafePosition()
     VAR robjoint current_joints;
     VAR robtarget current_pos;
@@ -742,7 +757,7 @@ FUNC bool IsRobotInSafePosition()
     current_pos := CRobT();
     
     ! Check if robot is within safe operational area
-    IF current_pos.trans.z < 100 THEN
+    IF current_pos.trans.z < SAFE_HEIGHT_THRESHOLD THEN
         TPWrite "SAFETY: Robot too low for remote command";
         RETURN FALSE;
     ENDIF
