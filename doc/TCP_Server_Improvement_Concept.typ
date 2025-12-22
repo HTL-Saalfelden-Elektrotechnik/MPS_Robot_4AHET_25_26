@@ -1,20 +1,78 @@
-# TCP Server Improvement Concept
+// TCP Server Improvement Concept
+// MPS Robot 4AHET 25/26
 
-## Overview
+#set document(
+  title: "TCP Server Improvement Concept",
+  author: "MPS Robot Team 4AHET 25/26",
+)
+
+#set page(
+  paper: "a4",
+  margin: (x: 2.5cm, y: 2.5cm),
+  header: [
+    #set text(9pt)
+    #smallcaps[TCP Server Improvement Concept]
+    #h(1fr)
+    MPS Robot 4AHET 25/26
+  ],
+  footer: [
+    #set text(9pt)
+    #h(1fr)
+    #counter(page).display("1 / 1", both: true)
+  ],
+)
+
+#set heading(numbering: "1.1")
+#set text(font: "Linux Libertine", size: 11pt)
+
+#show raw: set text(font: "DejaVu Sans Mono", size: 9pt)
+#show raw.where(block: true): block.with(
+  fill: luma(240),
+  inset: 10pt,
+  radius: 4pt,
+  width: 100%,
+)
+
+// Title Page
+#align(center)[
+  #v(3cm)
+  #text(24pt, weight: "bold")[TCP Server Improvement Concept]
+  #v(1cm)
+  #text(16pt)[MPS Robot 4AHET 25/26]
+  #v(2cm)
+  #text(12pt)[ABB RAPID Multiport TCP Server]
+  #v(1cm)
+  #line(length: 50%)
+  #v(0.5cm)
+  #text(11pt)[
+    Error Handling • Modular Routines • Multi-Client Support • Security
+  ]
+  #v(3cm)
+]
+
+#pagebreak()
+
+// Table of Contents
+#outline(
+  title: "Contents",
+  indent: auto,
+)
+
+#pagebreak()
+
+= Overview
 
 This document describes a concept for improving the ABB RAPID multiport TCP server by moving TCP server handling into separate routines. The improvements focus on:
 
-1. **Error Handling** - Reduces code crashes and improves stability
-2. **Modular Routines** - Enables multiple clients simultaneously
-3. **Security Improvements** - Better positional and networking security
++ *Error Handling* - Reduces code crashes and improves stability
++ *Modular Routines* - Enables multiple clients simultaneously  
++ *Security Improvements* - Better positional and networking security
 
----
+= Current Implementation Analysis
 
-## Current Implementation Analysis
+== Current Architecture (TcpServer_MultiPort module)
 
-### Current Architecture (TcpServer_MultiPort module)
-
-The current implementation has the following structure:
+The current implementation has the following structure (note: variable naming typos like `procesing_server_socket` exist in the original code):
 
 ```rapid
 MODULE TcpServer_MultiPort
@@ -40,21 +98,23 @@ MODULE TcpServer_MultiPort
 ENDMODULE
 ```
 
-### Current Issues
+== Current Issues
 
-| Issue | Impact | Severity |
-|-------|--------|----------|
-| Single blocking loop | Cannot handle multiple clients simultaneously | High |
-| No error handling for socket operations | Server crashes on connection errors | High |
-| No socket cleanup on errors | Resource leaks on failed connections | Medium |
-| No client validation | Security vulnerability | High |
-| Hard-coded IP addresses | Reduces portability | Low |
+#table(
+  columns: (auto, 1fr, auto),
+  inset: 8pt,
+  align: (left, left, center),
+  [*Issue*], [*Impact*], [*Severity*],
+  [Single blocking loop], [Cannot handle multiple clients simultaneously], [High],
+  [No error handling for socket operations], [Server crashes on connection errors], [High],
+  [No socket cleanup on errors], [Resource leaks on failed connections], [Medium],
+  [No client validation], [Security vulnerability], [High],
+  [Hard-coded IP addresses], [Reduces portability], [Low],
+)
 
----
+= Proposed Architecture
 
-## Proposed Architecture
-
-### 1. Separate Handler Routines
+== Separate Handler Routines
 
 Move each TCP server handler into its own routine to enable independent operation:
 
@@ -122,7 +182,7 @@ MODULE TcpServer_MultiPort
 ENDMODULE
 ```
 
-### 2. Generic Socket Initialization Routine
+== Generic Socket Initialization Routine
 
 Create a reusable routine for safe socket initialization with error handling:
 
@@ -131,7 +191,8 @@ Create a reusable routine for safe socket initialization with error handling:
 ! Safe socket initialization with error handling
 ! Returns TRUE on success, FALSE on failure
 !*********************************************************
-PROC InitServerSocket(VAR socketdev server_socket, string ip, num port, VAR bool server_running)
+PROC InitServerSocket(VAR socketdev server_socket, string ip, 
+                      num port, VAR bool server_running)
     server_running := FALSE;
     
     ! Create socket with error handling
@@ -168,7 +229,7 @@ UNDO
 ENDPROC
 ```
 
-### 3. Client Validation Routine
+== Client Validation Routine
 
 Add a routine to validate connecting clients:
 
@@ -193,7 +254,7 @@ FUNC bool ValidateClient(string client_ip, string allowed_ip)
 ENDFUNC
 ```
 
-### 4. Individual Server Handler Routines
+== Individual Server Handler Routines
 
 Create separate handler routines for each station:
 
@@ -205,7 +266,8 @@ PROC TestingServerHandler()
     VAR bool client_valid;
     
     ! Initialize server
-    InitServerSocket testing_server_socket, robot_ip, testing_port, testing_server_running;
+    InitServerSocket testing_server_socket, robot_ip, 
+                     testing_port, testing_server_running;
     
     IF NOT testing_server_running THEN
         TPWrite "Testing server failed to start";
@@ -252,13 +314,18 @@ UNDO
     SocketClose testing_server_socket;
     testing_server_running := FALSE;
 ENDPROC
+```
 
+== Handle Testing Client Request
+
+```rapid
 !*********************************************************
 ! Handle Testing Client Request
 !*********************************************************
 PROC HandleTestingClient()
     ! Receive data with timeout
-    SocketReceive testing_client_socket \Str := testing_receive_string \Time := 10;
+    SocketReceive testing_client_socket 
+        \Str := testing_receive_string \Time := 10;
     
     ! Log connection
     TPWrite "Testing client: " + testing_client_ip;
@@ -268,7 +335,8 @@ PROC HandleTestingClient()
     ProcessTestingCommand testing_receive_string;
     
     ! Send acknowledgment
-    SocketSend testing_client_socket \Str := "ACK:" + testing_receive_string;
+    SocketSend testing_client_socket 
+        \Str := "ACK:" + testing_receive_string;
     
 ERROR
     IF ERRNO = ERR_SOCK_TIMEOUT THEN
@@ -277,7 +345,11 @@ ERROR
         TPWrite "Testing: Communication error " + NumToStr(ERRNO, 0);
     ENDIF
 ENDPROC
+```
 
+== Process Testing Station Commands
+
+```rapid
 !*********************************************************
 ! Process Testing Station Commands
 !*********************************************************
@@ -301,7 +373,7 @@ ERROR
 ENDPROC
 ```
 
-### 5. Similar Handlers for Other Stations
+== Similar Handlers for Other Stations
 
 Create identical handler patterns for Processing, Handling, and Sorting stations:
 
@@ -312,7 +384,8 @@ Create identical handler patterns for Processing, Handling, and Sorting stations
 PROC ProcessingServerHandler()
     VAR bool client_valid;
     
-    InitServerSocket processing_server_socket, robot_ip, processing_port, processing_server_running;
+    InitServerSocket processing_server_socket, robot_ip, 
+                     processing_port, processing_server_running;
     
     IF NOT processing_server_running THEN
         TPWrite "Processing server failed to start";
@@ -324,7 +397,8 @@ PROC ProcessingServerHandler()
             \ClientAddress := processing_client_ip 
             \Time := 5;
         
-        client_valid := ValidateClient(processing_client_ip, processing_allowed_ip);
+        client_valid := ValidateClient(processing_client_ip, 
+                                       processing_allowed_ip);
         
         IF client_valid THEN
             HandleProcessingClient;
@@ -370,7 +444,7 @@ PROC SortingServerHandler()
 ENDPROC
 ```
 
-### 6. Main TCP Server Coordinator
+== Main TCP Server Coordinator
 
 Update the main tcpServer routine to start all handlers:
 
@@ -403,7 +477,11 @@ ERROR
 UNDO
     CleanupAllSockets;
 ENDPROC
+```
 
+== Cleanup All Sockets
+
+```rapid
 !*********************************************************
 ! Cleanup all open sockets
 !*********************************************************
@@ -430,11 +508,9 @@ ERROR
 ENDPROC
 ```
 
----
+= Multi-Client Support Architecture
 
-## Multi-Client Support Architecture
-
-### Option A: Round-Robin Polling (Single Task)
+== Option A: Round-Robin Polling (Single Task)
 
 For systems without multi-tasking support, use non-blocking polling:
 
@@ -443,18 +519,22 @@ PROC tcpServerPolling()
     VAR bool has_connection;
     
     ! Initialize all servers
-    InitServerSocket testing_server_socket, robot_ip, testing_port, testing_server_running;
-    InitServerSocket processing_server_socket, robot_ip, processing_port, processing_server_running;
-    InitServerSocket handling_server_socket, robot_ip, handling_port, handling_server_running;
-    InitServerSocket sorting_server_socket, robot_ip, sorting_port, sorting_server_running;
+    InitServerSocket testing_server_socket, robot_ip, 
+                     testing_port, testing_server_running;
+    InitServerSocket processing_server_socket, robot_ip, 
+                     processing_port, processing_server_running;
+    InitServerSocket handling_server_socket, robot_ip, 
+                     handling_port, handling_server_running;
+    InitServerSocket sorting_server_socket, robot_ip, 
+                     sorting_port, sorting_server_running;
     
     WHILE TRUE DO
         ! Poll each server with short timeout
         
         ! Testing
         IF testing_server_running THEN
-            has_connection := PollServer(testing_server_socket, testing_client_socket, 
-                                         testing_client_ip, 0.1);
+            has_connection := PollServer(testing_server_socket, 
+                testing_client_socket, testing_client_ip, 0.1);
             IF has_connection THEN
                 HandleTestingClient;
                 SocketClose testing_client_socket;
@@ -463,8 +543,8 @@ PROC tcpServerPolling()
         
         ! Processing
         IF processing_server_running THEN
-            has_connection := PollServer(processing_server_socket, processing_client_socket,
-                                         processing_client_ip, 0.1);
+            has_connection := PollServer(processing_server_socket, 
+                processing_client_socket, processing_client_ip, 0.1);
             IF has_connection THEN
                 HandleProcessingClient;
                 SocketClose processing_client_socket;
@@ -473,8 +553,8 @@ PROC tcpServerPolling()
         
         ! Handling
         IF handling_server_running THEN
-            has_connection := PollServer(handling_server_socket, handling_client_socket,
-                                         handling_client_ip, 0.1);
+            has_connection := PollServer(handling_server_socket, 
+                handling_client_socket, handling_client_ip, 0.1);
             IF has_connection THEN
                 HandleHandlingClient;
                 SocketClose handling_client_socket;
@@ -483,8 +563,8 @@ PROC tcpServerPolling()
         
         ! Sorting
         IF sorting_server_running THEN
-            has_connection := PollServer(sorting_server_socket, sorting_client_socket,
-                                         sorting_client_ip, 0.1);
+            has_connection := PollServer(sorting_server_socket, 
+                sorting_client_socket, sorting_client_ip, 0.1);
             IF has_connection THEN
                 HandleSortingClient;
                 SocketClose sorting_client_socket;
@@ -498,7 +578,11 @@ ERROR
     WaitTime 1;
     RETRY;
 ENDPROC
+```
 
+== Poll Server Function
+
+```rapid
 !*********************************************************
 ! Poll for incoming connection
 ! Returns TRUE if connection received, FALSE otherwise
@@ -517,35 +601,41 @@ ERROR
 ENDFUNC
 ```
 
-### Option B: Multi-Tasking (Parallel Handlers)
+== Option B: Multi-Tasking (Parallel Handlers)
 
 For systems with multi-tasking support, configure separate tasks:
 
-```
-System Configuration (EIO.cfg):
-- Task T_ROB1: Main robot task
-- Task T_TESTING: Testing server handler  
-- Task T_PROCESSING: Processing server handler
-- Task T_HANDLING: Handling server handler
-- Task T_SORTING: Sorting server handler
+#block(
+  fill: luma(230),
+  inset: 10pt,
+  radius: 4pt,
+)[
+  *System Configuration (EIO.cfg):*
+  - Task T_ROB1: Main robot task
+  - Task T_TESTING: Testing server handler  
+  - Task T_PROCESSING: Processing server handler
+  - Task T_HANDLING: Handling server handler
+  - Task T_SORTING: Sorting server handler
 
-Each task runs its respective ServerHandler procedure independently.
-```
+  Each task runs its respective ServerHandler procedure independently.
+]
 
----
+= Error Handling Strategy
 
-## Error Handling Strategy
+== Error Categories
 
-### Error Categories
+#table(
+  columns: (auto, auto, 1fr),
+  inset: 8pt,
+  align: (left, left, left),
+  [*Error Type*], [*ERRNO*], [*Recovery Action*],
+  [Socket Timeout], [ERR_SOCK_TIMEOUT], [TRYNEXT (continue)],
+  [Socket Closed], [ERR_SOCK_CLOSED], [Close client, TRYNEXT],
+  [Socket Binding Error], [ERR_SOCK_BIND], [Log error, return failure],
+  [General Socket Error], [Other], [Retry with delay],
+)
 
-| Error Type | ERRNO | Recovery Action |
-|------------|-------|-----------------|
-| Socket Timeout | ERR_SOCK_TIMEOUT | TRYNEXT (continue) |
-| Socket Closed | ERR_SOCK_CLOSED | Close client, TRYNEXT |
-| Socket Binding Error | ERR_SOCK_BIND | Log error, return failure |
-| General Socket Error | Other | Retry with delay |
-
-### Implementation Pattern
+== Implementation Pattern
 
 ```rapid
 PROC SafeSocketOperation()
@@ -583,11 +673,9 @@ UNDO
 ENDPROC
 ```
 
----
+= Security Improvements
 
-## Security Improvements
-
-### 1. IP Whitelisting
+== IP Whitelisting
 
 Only accept connections from known station IP addresses:
 
@@ -598,7 +686,7 @@ PERS string handling_allowed_ip := "10.0.1.40";
 PERS string sorting_allowed_ip := "10.0.1.50";
 ```
 
-### 2. Command Validation
+== Command Validation
 
 Validate all received commands before execution:
 
@@ -620,7 +708,7 @@ FUNC bool IsValidCommand(string cmd)
 ENDFUNC
 ```
 
-### 3. Connection Logging
+== Connection Logging
 
 Log all connection attempts for audit:
 
@@ -641,7 +729,7 @@ PROC LogConnection(string station, string client_ip, bool accepted)
 ENDPROC
 ```
 
-### 4. Robot Position Safety
+== Robot Position Safety
 
 Verify robot is in safe position before executing commands:
 
@@ -674,62 +762,69 @@ PROC ExecuteRemoteCommand(string cmd)
 ENDPROC
 ```
 
----
+= Implementation Phases
 
-## Implementation Phases
+== Phase 1: Error Handling (Low Risk)
 
-### Phase 1: Error Handling (Low Risk)
 - Add ERROR and UNDO handlers to existing code
 - Add socket timeouts to prevent blocking
 - Add connection logging
-- **Estimated effort**: 2-4 hours
 
-### Phase 2: Modular Routines (Medium Risk)
+*Estimated effort:* 2-4 hours
+
+== Phase 2: Modular Routines (Medium Risk)
+
 - Split tcpServer into separate handler routines
 - Create reusable initialization routine
 - Add client validation
-- **Estimated effort**: 4-6 hours
 
-### Phase 3: Multi-Client Support (Higher Risk)
+*Estimated effort:* 4-6 hours
+
+== Phase 3: Multi-Client Support (Higher Risk)
+
 - Implement polling-based multi-client handling
 - OR configure multi-tasking (requires system changes)
 - Add position safety checks
-- **Estimated effort**: 6-10 hours
 
----
+*Estimated effort:* 6-10 hours
 
-## Testing Recommendations
+= Testing Recommendations
 
-### Unit Tests
-1. Test socket initialization with valid/invalid parameters
-2. Test client validation with allowed/blocked IPs
-3. Test command parsing with valid/invalid commands
-4. Test error recovery after simulated failures
+== Unit Tests
 
-### Integration Tests
-1. Connect from each station and verify response
-2. Simulate multiple simultaneous connections
-3. Test behavior when station IP is incorrect
-4. Test recovery after network interruption
++ Test socket initialization with valid/invalid parameters
++ Test client validation with allowed/blocked IPs
++ Test command parsing with valid/invalid commands
++ Test error recovery after simulated failures
 
-### Safety Tests
-1. Verify robot stops on communication error
-2. Verify position checks before movement commands
-3. Test emergency stop integration
-4. Verify no uncontrolled motion on reconnection
+== Integration Tests
 
----
++ Connect from each station and verify response
++ Simulate multiple simultaneous connections
++ Test behavior when station IP is incorrect
++ Test recovery after network interruption
 
-## Summary
+== Safety Tests
+
++ Verify robot stops on communication error
++ Verify position checks before movement commands
++ Test emergency stop integration
++ Verify no uncontrolled motion on reconnection
+
+= Summary
 
 This concept provides a structured approach to improving the TCP server with:
 
-| Improvement | Benefit |
-|-------------|---------|
-| Separate handler routines | Clearer code, easier maintenance |
-| Error handling | Reduced crashes, automatic recovery |
-| Client validation | Better security |
-| Position safety | Reduced risk of uncontrolled motion |
-| Modular design | Easier testing and extension |
+#table(
+  columns: (auto, 1fr),
+  inset: 8pt,
+  align: (left, left),
+  [*Improvement*], [*Benefit*],
+  [Separate handler routines], [Clearer code, easier maintenance],
+  [Error handling], [Reduced crashes, automatic recovery],
+  [Client validation], [Better security],
+  [Position safety], [Reduced risk of uncontrolled motion],
+  [Modular design], [Easier testing and extension],
+)
 
 The implementation can be done in phases, starting with low-risk error handling improvements and progressing to more significant architectural changes based on system requirements and testing results.
