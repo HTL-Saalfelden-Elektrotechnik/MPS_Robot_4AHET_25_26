@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<Program>
+	<Module>Manager.mod</Module>
+	<Module>TcpServer_MultiPort.mod</Module>
+	<Module>user.mod</Module>
+	<Module>MainModule.mod</Module>
+	<Module>TCPClient.mod</Module>
+</Program>
